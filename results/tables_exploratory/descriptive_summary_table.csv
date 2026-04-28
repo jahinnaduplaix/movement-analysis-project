@@ -1,7 +1,0 @@
-Variable,N,Mean,SD,Median,Q1,Q3,Min,Max
-wrist_extension_deg_T0,461,50.27,7.52,50.1,45.5,55.1,30.0,79.8
-wrist_extension_deg_T1,461,51.93,7.88,51.7,46.7,57.1,30.9,81.2
-forearm_supination_deg_T0,461,69.68,8.98,69.9,62.9,75.8,43.4,91.2
-forearm_supination_deg_T1,461,71.93,9.58,72.0,65.3,78.3,46.5,98.9
-delta_wrist_extension_deg,461,1.66,2.65,1.7,0.7,2.6,-37.5,31.4
-delta_forearm_supination_deg,461,2.25,2.63,2.2,0.9,3.3,-1.6,35.5

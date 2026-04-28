@@ -1,0 +1,7 @@
+,count,mean,std,median,min,max
+Wrist extension at T0,461.0,50.27,7.52,50.1,30.0,79.8
+Wrist extension at T1,461.0,51.93,7.88,51.7,30.9,81.2
+Wrist extension change,461.0,1.66,2.65,1.7,-37.5,31.4
+Forearm supination at T0,461.0,69.68,8.98,69.9,43.4,91.2
+Forearm supination at T1,461.0,71.93,9.58,72.0,46.5,98.9
+Forearm supination change,461.0,2.25,2.63,2.2,-1.6,35.5
