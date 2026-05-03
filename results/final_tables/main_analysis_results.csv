@@ -1,0 +1,3 @@
+Outcome,n,Mean T0 (°),Mean T1 (°),Mean delta (°),Median delta (°),Estimated shift (°),95% CI (°),p-value
+Wrist extension,461,50.21,51.89,1.68,1.7,1.7,1.60 to 1.85,< .001
+Forearm supination,461,69.7,71.74,2.04,2.1,2.1,1.90 to 2.25,< .001
