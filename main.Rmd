@@ -1,0 +1,190 @@
+---
+title: "Range of Motion Analysis"
+author: "Jahinna Duplaix"
+date: "`r format(Sys.time(), '%d %B, %Y, %H:%M')`"
+output:
+ html_document:
+    code_folding: hide
+    toc: true
+        toc_depth: 2
+    number_sections: true
+---
+
+# Project overview
+
+This report presents the final analysis of a range-of-motion dataset collected in leather workers who participated in the 6-month **Ostéart** prevention program.
+
+The research question is:
+
+**What is the effect of the 6-month Ostéart prevention program on wrist extension and forearm supination in leather workers?**
+
+This prevention program was developed in the context of **carpal tunnel syndrome prevention**, as leather workers are highly exposed to repetitive movements and biomechanical constraints affecting the upper limb, especially the wrist and forearm.
+
+The dataset includes **473 employees** measured between **2020 and 2024**.
+
+Two movement variables were measured:
+- **wrist extension**
+- **forearm supination**
+
+Each participant was measured at two timepoints:
+- **T0**: baseline
+- **T1**: follow-up after the prevention program
+
+The primary outcomes of interest are the **within-participant changes** between `T0` and `T1`:
+- `delta_wrist_extension_deg`
+- `delta_forearm_supination_deg`
+
+# Data preparation in Python
+
+The raw dataset was first inspected and prepared in **Python**.
+
+This stage included:
+- data cleaning
+- harmonization of variable formats
+- identification of implausible raw values
+- verification of the longitudinal structure
+- exclusion of invalid or incomplete observations
+- creation of the final complete-case analysis dataset
+- computation of the primary outcome variables
+- production of descriptive and exploratory outputs
+
+More specifically:
+- **3 participants** were excluded because of an invalid longitudinal structure
+- **9 participants** were excluded because of incomplete movement data
+
+The final complete-case analysis dataset therefore included **461 participants**.
+
+In Python, the change scores were computed as:
+
+- `delta_wrist_extension_deg = wrist_extension_deg_T1 - wrist_extension_deg_T0`
+
+- `delta_forearm_supination_deg = forearm_supination_deg_T1 - forearm_supination_deg_T0`
+
+Python was also used to produce:
+
+- a descriptive summary table of the main movement variables
+
+- exploratory histograms of the primary outcome variables
+
+The processed dataset exported from Python is used here for the final descriptive analyses, statistical tests, and graphical outputs.
+
+In this report, the final analysis dataset is imported, described, and analysed in order to assess the changes in wrist extension and forearm supination between `T0` and `T1`.
+
+# Setup chunk
+```{r setup, include=FALSE}
+# Set global chunk options for the whole document
+knitr::opts_chunk$set(
+  echo = TRUE, 
+  warning = FALSE, 
+  message = FALSE)
+```
+
+# Load packages
+```{r load packages}
+# readr is used to import the CSV file exported from Python
+library(readr)
+# dplyr is used to manipulate and organize data tables
+library(dplyr)
+# ggplot2 is used to create figures in R
+library(ggplot2)
+# knitr is used to display cleaner tables in the HTLM report
+library(knitr)
+```
+
+## Data import and verification
+
+The final complete-case analysis dataset exported from Python was imported into `R`.
+
+This dataset contains one row per participant and includes paired measurements at `T0` and `T1` for wrist extension and forearm supination.
+
+Basic checks were performed to verify:
+
+- dataset dimensions;
+- variable names;
+- variable types;
+- missing values.
+
+## Import the final analysis dataset
+
+```{r import dataset}
+#Import the final complete-case analysis dataset exported from Python
+analysis_df <- read_csv("data/processed/analysis_dataset.csv")
+## First inspection of the dataset
+# Display the number of rows and columns
+dim(analysis_df)
+# Display the names of the variables
+names(analysis_df)
+# Check dataset structure
+glimpse(analysis_df)
+# Check missing values by variable
+missing_values <- colSums(is.na(analysis_df))
+missing_values
+```
+The imported dataset contained `461` participants and `7` variables.
+
+All expected variables were present: participant identifier, wrist extension at `T0` and `T1`, forearm supination at `T0` and `T1`, and the two change-score variables.
+
+The structure of the dataset was appropriate for the planned analyses. The participant identifier was stored as a character variable, while all movement variables were stored as numeric variables.
+
+No missing values were identified in the final complete-case analysis dataset. Therefore, the dataset exported from Python was considered ready for the statistical analyses in `R`.
+
+
+## Normality assessment of change scores
+
+The statistical analysis focuses on the change scores between `T0` and `T1`.
+
+Before choosing the paired statistical test, the distribution of the two change scores was assessed. 
+
+This step is necessary because the choice between : 
+- a paired t-test; 
+- a Wilcoxon signed-rank test 
+depends on whether the paired differences are approximately normally distributed.
+
+### Wrist extension change
+
+A Q-Q plot was used to visually assess the distribution of wrist extension change scores.
+
+```{r qqplot-wrist}
+# Q-Q plot for wrist extension change
+qqnorm(
+  analysis_df$delta_wrist_extension_deg,
+  main = "Q-Q plot of wrist extension change",
+  xlab = "Theoretical quantiles",
+  ylab = "Observed quantiles"
+)
+qqline(analysis_df$delta_wrist_extension_deg)
+```
+
+### Forearm supination change
+
+A Q-Q plot was used to visually assess the distribution of forearm supination change scores.
+
+```{r qqplot-supination}
+# Q-Q plot for forearm supination change
+qqnorm(
+  analysis_df$delta_forearm_supination_deg,
+  main = "Q-Q plot of forearm supination change",
+  xlab = "Theoretical quantiles",
+  ylab = "Observed quantiles"
+)
+qqline(analysis_df$delta_forearm_supination_deg)
+```
+### Visual interpretation of Q-Q plots
+
+The Q-Q plots show that the central part of both change-score distributions is relatively close to the reference line.
+
+However, deviations are visible at the lower and upper ends of the distributions. This suggests that the change scores are not perfectly normally distributed, especially in the tails.
+
+For wrist extension change, most points follow the reference line in the middle of the distribution, but the extreme values deviate from the line.
+
+For forearm supination change, the same pattern is observed: the central values are close to the line, while the tails show clearer departures from normality.
+
+Therefore, the Q-Q plots suggest that normality should not be assumed without further statistical verification.
+
+```{r shapiro-tests}
+# Shapiro-Wilk test for wrist extension change
+shapiro.test(analysis_df$delta_wrist_extension_deg)
+
+# Shapiro-Wilk test for forearm supination change
+shapiro.test(analysis_df$delta_forearm_supination_deg)
+```

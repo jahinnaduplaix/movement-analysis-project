@@ -4,7 +4,7 @@
 
 ## Project overview
 
-This project analyses the effect of a prevention program on two range-of-motion outcomes in leather workers:
+This project analyses pre-post changes in wrist extension and forearm supination among leatherworkers after a prevention program.:
 - wrist extension
 - forearm supination
 
