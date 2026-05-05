@@ -135,7 +135,7 @@ For forearm supination, the mean value increased from 69.70 degrees at T0 to 71.
 
 These descriptive results indicate small positive changes between T0 and T1 for both movement outcomes. However, descriptive statistics alone do not indicate whether these changes are statistically significant.
 
-The descriptive summary table was exported to the `results/tables_exploratory` folder as `analysis_summary_table.csv`
+The descriptive summary table was exported to the `results/tables_exploratory` folder as `analysis_summary_table.csv`.
 
 ### Histograms of the change-score variables
 
@@ -168,7 +168,7 @@ The next part of the report presents the statistical analysis performed in R. Be
 The histograms were exported to the `results/figures_exploratory` folder as:
 
 - `hist_delta_wrist_extension_deg_global.png`; 
-- `hist_delta_forearm_supination_deg_global.png`
+- `hist_delta_forearm_supination_deg_global.png`.
 
 # Statistical analysis in R
 
@@ -895,7 +895,7 @@ ggsave(
   dpi = 300
 )
 ```
-The final boxplot figure was exported to the `results/final_figures` folder as `final_boxplot_range_of_motion.png`
+The final boxplot figure was exported to the `results/final_figures` folder as `final_boxplot_range_of_motion.png`.
 
 _Final figure interpretation_:
 
@@ -913,7 +913,7 @@ The aim of this project was to describe changes in wrist extension and forearm s
 
 The main analysis showed statistically significant positive changes for both outcomes. Wrist extension increased by a mean of **1.68 degrees**, and forearm supination increased by a mean of **2.04 degrees**. The Wilcoxon estimated shifts were **1.70 degrees** for wrist extension and **2.10 degrees** for forearm supination. These results indicate a positive change between baseline and follow-up for both range-of-motion outcomes.
 
-However, the magnitude of the observed changes was modest. This distinction is important because statistical significance does not necessarily imply a large clinical or functional change. With a sample of **461 participants**, even small changes can reach statistical significance. Therefore, the results should be interpreted as statistically robust but modest in size.
+However, the magnitude of the observed changes was modest. This distinction is important because statistical significance does not necessarily imply a large clinical or functional change. With a sample of **461 participants**, even small changes can reach statistical significance. Therefore, the results should be interpreted as statistically significant and consistent in the sensitivity analysis, but modest in size.
 
 The observed range-of-motion values were compared with reference values reported by Norkin and White. For wrist extension, the AAOS reference value is **70 degrees**, while the AMA considers **60 degrees or more** as functional. In the present dataset, mean wrist extension increased from **50.21 degrees at T0** to **51.89 degrees at T1**. Therefore, although the change was statistically significant, the mean values remained below these reference values.
 
