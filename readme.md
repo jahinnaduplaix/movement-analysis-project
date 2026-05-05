@@ -58,6 +58,12 @@ DUPLAIX.JAHINNA/                                          : root folder of the p
 ├── main.Rmd                                              : entry point to run all R analyses
 ├── main.Rproj                                            : RStudio project file
 ├── duplaix.jahinna.html                                  : final HTML report 
+├── .Rprofile                                             : activates the renv environment when the project is opened
+├── renv.lock                                             : records the exact R package versions used in the project
+├── renv/                                                 : files used to activate and configure the R environment
+│   ├── .gitignore                                        : prevents the local renv library from being tracked by Git
+│   ├── activate.R                                        : script used by renv to activate the project environment
+│   └── settings.json                                     : renv project settings
 ├── data/                                                 : data files needed to run the project
 │   ├── raw/                                              : original data files
 │   │   └── TMinstitute_prevention_base_2025.xlsx 
