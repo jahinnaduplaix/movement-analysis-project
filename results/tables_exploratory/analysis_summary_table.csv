@@ -1,4 +1,4 @@
-,count,mean,std,median,min,max
+Variable,count,mean,std,median,min,max
 Wrist extension at T0,461.0,50.21,7.4,50.1,30.0,71.8
 Wrist extension at T1,461.0,51.89,7.75,51.7,30.9,73.9
 Wrist extension change,461.0,1.68,1.32,1.7,-1.2,5.8
