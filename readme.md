@@ -11,7 +11,7 @@ Main report: `duplaix.jahinna.html`
 
 This project analyses range-of-motion changes in leather workers who participated in the 6-month Ostéart prevention program.
 
-The dataset was collected between 2023 and 2025 among 473 leather workers. The Ostéart program was developed as an occupational prevention program focused on upper-limb musculoskeletal disorders, including carpal tunnel syndrome.
+The dataset was collected between 2023 and 2025 among 473 leather workers. According to the project context, the Ostéart program was developed as an occupational prevention program focused on upper-limb musculoskeletal disorders, including carpal tunnel syndrome.
 
 The analysis focuses on two range-of-motion outcomes:
 
@@ -41,7 +41,7 @@ Therefore, the analysis can describe observed within-participant changes between
 
 The primary outcome variables are the within-participant change scores:
 
-- `delta_wrist_extension_deg` = wrist_extension_deg_T1 - wrist_extension_deg_T0; 
+- `delta_wrist_extension_deg` = wrist_extension_deg_T1 - wrist_extension_deg_T0;
 - `delta_forearm_supination_deg` = forearm_supination_deg_T1 - forearm_supination_deg_T0.
 
 ## 4. Project structure
@@ -143,6 +143,9 @@ Run:
 
 `main.ipynb`
 
+The notebook starts with a setup cell that installs the required Python packages from `requirements.txt`.
+This cell should be run before the package import cells.
+
 The Python notebook performs:
 
 - import of the raw Excel dataset;
@@ -190,25 +193,25 @@ The final report generated from R is:
 
 This project requires both Python and R.
 
-### Python
+### Python packages
 
 The Python packages required for the notebook are listed in:
 
 `requirements.txt`
-
-To install them, run:
-
-```bash
-pip install -r requirements.txt
-```
-
-The main Python packages used are:
+The required packages used are:
 
 pandas
 numpy
 matplotlib
 openpyxl
-jupyter
+
+At the beginning of `main.ipynb`, a setup cell installs these packages from `requirements.txt`:
+
+```bash
+pip install -r requirements.txt
+```
+
+### R packages
 
 The R package environment is recorded in:
 
