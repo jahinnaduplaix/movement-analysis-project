@@ -123,7 +123,7 @@ The data used in this project were provided by the creators of the Ostéart prev
 
 The data are not covered by the code licence.
 
-The data files must not be reused, redistributed, modified, published, or shared outside the context authorized by the data providers.
+The data files must not be reused, redistributed, published, or shared outside the context authorized by the data providers.
 
 Any reuse of the data requires prior permission from the data providers.
 
@@ -172,6 +172,8 @@ Run:
 
 `main.Rmd`
 
+The R Markdown file starts by restoring the R package environment recorded in `renv.lock`.
+
 The R Markdown file performs:
 
 - import of the processed dataset;
@@ -193,17 +195,24 @@ The final report generated from R is:
 
 This project requires both Python and R.
 
+The project should be opened from the root folder:
+
+`DUPLAIX.JAHINNA/`
+
+This helps ensure that relative paths are resolved correctly.
+
 ### Python packages
 
 The Python packages required for the notebook are listed in:
 
 `requirements.txt`
-The required packages used are:
 
-pandas
-numpy
-matplotlib
-openpyxl
+The required Python packages are:
+
+- pandas
+- numpy
+- matplotlib
+- openpyxl
 
 At the beginning of `main.ipynb`, a setup cell installs these packages from `requirements.txt`:
 
@@ -211,38 +220,42 @@ At the beginning of `main.ipynb`, a setup cell installs these packages from `req
 pip install -r requirements.txt
 ```
 
+This setup cell should be run before the Python import cells.
+
+The notebook must be launched from the project root folder, where `requirements.txt` is located.
+
+An internet connection may be required if some packages are not already installed.
+
 ### R packages
 
-The R package environment is recorded in:
+The R package environment is managed with `renv`.
+
+The package versions used for this project are recorded in:
 
 `renv.lock`
-
-To restore the R environment, run:
-
-```bash
-install.packages("renv")
-renv::restore()
-```
-
-The main R packages used are:
-
-readr
-dplyr
-tidyr
-ggplot2
-knitr
-kableExtra
-rmarkdown
-
-The project should be opened from the root folder:
-
-`DUPLAIX.JAHINNA/`
 
 The recommended way to open the R part of the project is to use:
 
 `main.Rproj`
 
-This helps ensure that relative paths are resolved from the correct project directory.
+Opening the project from `main.Rproj` helps activate the `renv` environment and ensures that relative paths are resolved from the correct project directory.
+
+At the beginning of main.Rmd, the R environment is restored with:
+
+renv::restore(prompt = FALSE)
+
+The main R packages used are:
+
+- readr
+- dplyr
+- tidyr
+- ggplot2
+- knitr
+- kableExtra
+- rmarkdown
+- tibble
+
+An internet connection may be required the first time the project is run if the required R packages are not already installed.
 
 ## 8. Limitations
 
@@ -263,3 +276,13 @@ Generative AI tools were used as assistance during the preparation of this proje
 They were used to help structure the README, improve wording, check clarity, and support debugging or explanation of the code.
 
 The author remains responsible for the final content of the project, including the analysis workflow, statistical choices, code, results, and interpretation.
+
+## 10. References
+
+Norkin, C. C., & White, D. J. (2016). *Measurement of Joint Motion: A Guide to Goniometry* (5th ed.). F. A. Davis Company.
+
+TM Institute. (n.d.). *Ostéart Pro*. Accessed May 11, 2026. https://www.tminstitute.fr/osteart.html
+
+Palmer, K. T., Harris, E. C., & Coggon, D. (2007). Carpal tunnel syndrome and its relation to occupation: A systematic literature review. *Occupational Medicine, 57*(1), 57–66. doi:10.1093/occmed/kql125
+
+Nicoletti, S., Carino, M., Di Leone, G., et al. (2008). Prevalence of upper limb work-related musculoskeletal disorders (UL-WMSDs) in workers of the upholstered furniture industry. *La Medicina del Lavoro, 99*(4), 271–280. doi:10.23749/mdl.v99i4.1683

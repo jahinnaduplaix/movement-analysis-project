@@ -8,17 +8,26 @@ output:
     toc_depth: 3
     number_sections: true
 ---
+
 ```{r setup, include=FALSE}
+# Restore the R package environment recorded in renv.lock
+renv::restore(prompt = FALSE)
+
 # Set global chunk options for the whole document
 knitr::opts_chunk$set(
   echo = FALSE, 
   warning = FALSE, 
   message = FALSE)
 
+# Avoid scientific notation in the report
+options(scipen = 999)
+
 # readr is used to import the CSV file exported from Python
 library(readr)
 # dplyr is used to manipulate and organize data tables
 library(dplyr) 
+# tidyr is used to reshape data for the final figure
+library(tidyr)
 # ggplot2 is used to create figures in R
 library(ggplot2)
 # knitr is used to display cleaner tables in the HTML report
@@ -32,7 +41,7 @@ This report presents the statistical analysis of a range-of-motion **dataset col
 
 The Ostéart program was developed as an occupational prevention program. It focuses on the prevention of upper-limb musculoskeletal disorders, including carpal tunnel syndrome. This context is relevant because leather workers may be exposed to repetitive hand and wrist movements, sustained postures, and biomechanical constraints affecting the wrist, forearm, and hand.
 
-The dataset contained paired measurements, meaning that the same participants were measured before and after the 6-month program.
+The analysis was based on paired measurements, meaning that the same participants were expected to be measured before and after the 6-month program.
 
 Two range-of-motion outcomes were analysed:
 
@@ -44,7 +53,7 @@ Each participant was measured at two timepoints:
 - **T0**: baseline measurement;
 - **T1**: follow-up measurement after the 6-month program.
 
-The objective of this analysis was to assess within-participant changes in wrist extension and forearm supination between T0 and T1.
+The objective of this analysis was to describe within-participant changes in wrist extension and forearm supination between T0 and T1.
 
 The research question was:
 
@@ -68,16 +77,16 @@ The Python workflow had four main purposes:
 
 1. to clean and structure the raw dataset;
 2. to verify the longitudinal pre-post structure;
-3. to identify missing, invalid, or anatomically questionable values;
+3. to identify missing, invalid, or anatomically high values requiring verification;
 4. to create the final complete-case dataset and exploratory outputs used in this report.
 
 ## Data cleaning and preparation
 
 During data preparation, **3 participants were excluded** because their longitudinal structure was invalid, and **9 participants were excluded** because they had incomplete movement data.
 
-One clearly impossible raw value for wrist extension was identified and recoded as missing before the complete-case dataset was created.
+One clearly impossible raw wrist extension value above 180 degrees was identified and recoded as missing...
 
-An anatomical plausibility check was also performed in Python. Seven participants had forearm supination values above the conservative verification threshold of 90 degrees. These observations were flagged with `anatomical_check_flag`, but they were retained in the main analysis because they were considered high values rather than impossible values.
+An anatomical plausibility check was also performed in Python. Seven participants had at least one range-of-motion value above the conservative verification thresholds. These observations were flagged with `anatomical_check_flag`, but they were retained in the main analysis because they were considered high values rather than impossible values.
 
 After these exclusions and checks, the final complete-case analysis dataset included **461 participants**.
 
@@ -108,9 +117,20 @@ It includes:
 - the minimum and maximum values.
 
 ```{r import-python-descriptive-table}
-# Import descriptive summary table generated in Python
+# Define the path to the descriptive summary table generated in Python
+descriptive_summary_file <- "results/tables_exploratory/analysis_summary_table.csv"
+
+# Stop with a clear message if the Python output file is missing
+if (!file.exists(descriptive_summary_file)) {
+  stop(
+    "The descriptive summary table was not found. ",
+    "Please run main.ipynb before knitting main.Rmd."
+  )
+}
+
+# Import the descriptive summary table generated in Python
 descriptive_summary <- readr::read_csv(
-  "results/tables_exploratory/analysis_summary_table.csv",
+  descriptive_summary_file,
   show_col_types = FALSE
 )
 
@@ -120,14 +140,14 @@ knitr::kable(
   caption = "Descriptive summary generated in Python",
   align = "lcccccc",
   format = "html"
-) %>%
+) %>%  
   kableExtra::kable_styling(
     full_width = FALSE,
     position = "center"
   )
 ```
 
-The final Python-prepared dataset included **461 participants** with complete paired measurements.
+The final Python-prepared dataset included **461 participants** with complete paired measurements for both movement outcomes.
 
 For wrist extension, the mean value increased from 50.21 degrees at T0 to 51.89 degrees at T1. The mean change was **1.68** degrees, with a median change of 1.70 degrees.
 
@@ -139,7 +159,7 @@ The descriptive summary table was exported to the `results/tables_exploratory` f
 
 ### Histograms of the change-score variables
 
-Histograms were used to visually examine the distribution of the two change-score variables before the normality assessment.
+Histograms were used to visually examine the distribution of the two change-score variables before selecting the appropriate inferential tests.
 
 The two variables displayed were:
 
@@ -149,13 +169,24 @@ The two variables displayed were:
 Each change score was computed as `T1 - T0`.
 
 ```{r python-histograms, out.width="80%", fig.align="center"}
-# Insert histograms generated in Python
-knitr::include_graphics(c(
+# Define the paths to the histograms generated in Python
+histogram_files <- c(
   "results/figures_exploratory/hist_delta_wrist_extension_deg_global.png",
   "results/figures_exploratory/hist_delta_forearm_supination_deg_global.png"
-))
+)
+
+# Stop with a clear message if one or more Python histogram files are missing
+if (!all(file.exists(histogram_files))) {
+  stop(
+    "One or more Python histogram files were not found. ",
+    "Please run main.ipynb before knitting main.Rmd."
+  )
+}
+
+# Insert histograms generated in Python
+knitr::include_graphics(histogram_files)
 ```
-The histograms show that most change scores were positive for both outcomes.
+The histograms show that the change scores were mainly centered around positive values for both outcomes.
 
 For wrist extension, changes were concentrated around small positive values. This indicates that most participants showed modest increases between T0 and T1.
 
@@ -172,19 +203,17 @@ The histograms were exported to the `results/figures_exploratory` folder as:
 
 # Statistical analysis in R
 
-From this point onward, the analysis was conducted in **R**. 
+From this point onward, the analysis was conducted in **R**.
 
 R was used to import the final complete-case dataset exported from Python, verify its structure, assess the distribution of the change scores, perform the paired statistical tests, conduct the sensitivity analysis, and produce the final statistical outputs.
-
-Before running the inferential analyses, the imported dataset was checked to ensure that it was complete, correctly structured, and consistent with the Python-prepared analysis dataset.
 
 ## Data import and verification
 
 The final complete-case analysis dataset exported from Python was imported into R.
 
-This dataset contained one row per participant and included paired T0 and T1 measurements for wrist extension and forearm supination.
+This dataset contained one row per participant and included complete paired T0 and T1 measurements for wrist extension and forearm supination.
 
-The import verification checked:
+Before running the inferential analyses, the imported dataset was checked to verify:
 
 - dataset dimensions;
 - expected variable names;
@@ -195,17 +224,91 @@ The import verification checked:
 ### Import the final analysis dataset
 
 ```{r import-dataset}
+# Define the path to the final complete-case dataset exported from Python
+analysis_file <- "data/processed/analysis_dataset.csv"
+
+# Stop with a clear message if the Python output file is missing
+if (!file.exists(analysis_file)) {
+  stop(
+    "The final analysis dataset was not found. ",
+    "Please run main.ipynb before knitting main.Rmd."
+  )
+}
+
 # Import the final complete-case analysis dataset exported from Python
-analysis_df <- read_csv(
-  "data/processed/analysis_dataset.csv",
+analysis_df <- readr::read_csv(
+  analysis_file,
   show_col_types = FALSE
 )
 
-# Basic import checks
-dim(analysis_df)
-names(analysis_df)
-glimpse(analysis_df)
-colSums(is.na(analysis_df))
+# Define the variables expected in the imported dataset
+expected_variables <- c(
+  "participant_id",
+  "wrist_extension_deg_T0",
+  "wrist_extension_deg_T1",
+  "forearm_supination_deg_T0",
+  "forearm_supination_deg_T1",
+  "anatomical_check_flag",
+  "delta_wrist_extension_deg",
+  "delta_forearm_supination_deg"
+)
+
+# Check that all expected variables are present
+missing_expected_variables <- setdiff(expected_variables, names(analysis_df))
+
+if (length(missing_expected_variables) > 0) {
+  stop(
+    "The following expected variables are missing from analysis_df: ",
+    paste(missing_expected_variables, collapse = ", ")
+  )
+}
+
+# Create a summary of the imported dataset
+import_summary <- tibble::tibble(
+  Check = c(
+    "Number of participants",
+    "Number of variables",
+    "Total missing values",
+    "Number of anatomically flagged participants"
+  ),
+  Value = c(
+    nrow(analysis_df),
+    ncol(analysis_df),
+    sum(is.na(analysis_df)),
+    sum(analysis_df$anatomical_check_flag)
+  )
+)
+
+# Display the import summary
+knitr::kable(
+  import_summary,
+  caption = "Import summary of the Python-prepared analysis dataset",
+  align = "lc",
+  format = "html"
+) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  )
+
+# Create a variable-level verification table
+variable_summary <- tibble::tibble(
+  Variable = names(analysis_df),
+  Type = vapply(analysis_df, function(x) class(x)[1], character(1)),
+  Missing_values = colSums(is.na(analysis_df))
+)
+
+# Display the variable-level verification table
+knitr::kable(
+  variable_summary,
+  caption = "Variable-level verification of the imported dataset",
+  align = "llc",
+  format = "html"
+) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  )
 ```
 
 The imported dataset contained **461 participants** and **8 variables**.
@@ -227,7 +330,17 @@ Participants with values above the conservative anatomical verification threshol
 flag_summary <- analysis_df %>%
   count(anatomical_check_flag, name = "n") %>%
   mutate(
+    anatomical_flag_label = ifelse(
+      anatomical_check_flag,
+      "Flagged for anatomical verification",
+      "Not flagged"
+    ),
     percentage = round(100 * n / sum(n), 1)
+  ) %>%
+  select(
+    anatomical_flag_label,
+    n,
+    percentage
   )
 
 # Display a clean summary table
@@ -236,31 +349,6 @@ knitr::kable(
   caption = "Summary of anatomical plausibility flag",
   col.names = c("Anatomical plausibility flag", "n", "%"),
   align = "lcc",
-  format = "html"
-) %>%
-  kableExtra::kable_styling(
-    full_width = FALSE,
-    position = "center"
-  )
-```
-
-```{r anatomical-flag-participants-check}
-# Display participants flagged during the anatomical plausibility check
-flagged_participants <- analysis_df %>%
-  filter(anatomical_check_flag == TRUE) %>%
-  select(
-    participant_id,
-    wrist_extension_deg_T0,
-    wrist_extension_deg_T1,
-    forearm_supination_deg_T0,
-    forearm_supination_deg_T1,
-    anatomical_check_flag
-  )
-
-knitr::kable(
-  flagged_participants,
-  caption = "Participants flagged during anatomical plausibility check",
-  align = "lrrrrl",
   format = "html"
 ) %>%
   kableExtra::kable_styling(
@@ -281,7 +369,7 @@ Normality was assessed using:
 - Visual inspection of Q-Q plots;
 - Shapiro-Wilk normality tests.
 
-This step was performed on the final complete-case dataset, including the participants flagged during the anatomical plausibility check. These participants were retained in the main analysis because their values were high but not physiologically impossible.
+This step was performed on the final complete-case dataset, including the participants flagged during the anatomical plausibility check. These participants were retained in the main analysis because their values were high but were not considered impossible during data preparation.
 
 ### Q-Q plot for wrist extension change
 
@@ -317,7 +405,7 @@ qqline(analysis_df$delta_forearm_supination_deg)
 
 Shapiro-Wilk tests were used to statistically assess the normality of the two change-score variables.
 
-The null hypothesis of the Shapiro-Wilk test is that the data are compatible with a normal distribution.
+The null hypothesis of the Shapiro-Wilk test is that the data are compatible with a normal distribution. A small P value suggests a departure from normality.
 
 ```{r shapiro-tests}
 # Shapiro-Wilk tests for the two change-score variables
@@ -337,20 +425,27 @@ shapiro_results <- data.frame(
     ),
     5
   ),
-  p_value = c(
-    format.pval(shapiro_wrist$p.value, digits = 3, eps = 0.001),
-    format.pval(shapiro_supination$p.value, digits = 3, eps = 0.001)
+  p_value_numeric = c(
+    shapiro_wrist$p.value,
+    shapiro_supination$p.value
   )
+)
+
+# Create a formatted P value column for display
+shapiro_results$p_value <- format.pval(
+  shapiro_results$p_value_numeric,
+  digits = 3,
+  eps = 0.001
 )
 
 # Display the Shapiro-Wilk results
 knitr::kable(
-  shapiro_results,
+  shapiro_results[, c("Outcome", "W", "p_value")],
   caption = "Shapiro-Wilk normality tests for change-score variables",
   col.names = c("Outcome", "W statistic", "P value"),
   align = "lcc",
   format = "html"
-) %>%
+) %>%  
   kableExtra::kable_styling(
     full_width = FALSE,
     position = "center"
@@ -358,12 +453,12 @@ knitr::kable(
 ```
 ### Normality assessment interpretation
 
-The Q-Q plots showed that most points followed the reference line in the central part of the distribution for both change-score variables. However, **deviations were visible at the lower and upper tails.**
+The Q-Q plots showed that most points followed the reference line in the central part of the distribution for both change-score variables. However, deviations were visible at the lower and upper tails.
 
-The Shapiro-Wilk tests were statistically significant for both outcomes. 
+The Shapiro-Wilk tests were statistically significant for both outcomes.
 
-- For wrist extension change, the test gave **W = 0.99132 and P = 0.008421**;
-- For forearm supination change, the test gave **W = 0.99058 and P = 0.004832**.
+- For wrist extension change, the test gave **W = `r shapiro_results$W[shapiro_results$Outcome == "Wrist extension change"]` and P = `r shapiro_results$p_value[shapiro_results$Outcome == "Wrist extension change"]`**;
+- For forearm supination change, the test gave **W = `r shapiro_results$W[shapiro_results$Outcome == "Forearm supination change"]` and P = `r shapiro_results$p_value[shapiro_results$Outcome == "Forearm supination change"]`**.
 
 Therefore, the assumption of normality was not retained for the two change-score variables. Although the distributions were visually close to normal in their central part, the tail deviations and significant Shapiro-Wilk tests supported the use of a non-parametric paired test.
 
@@ -405,16 +500,16 @@ wilcoxon_results <- data.frame(
     unname(wilcox_wrist$statistic),
     unname(wilcox_supination$statistic)
   ),
-  P_value = c(
-    format.pval(wilcox_wrist$p.value, digits = 3, eps = 0.001),
-    format.pval(wilcox_supination$p.value, digits = 3, eps = 0.001)
+  p_value_numeric = c(
+    wilcox_wrist$p.value,
+    wilcox_supination$p.value
   ),
-  Estimated_shift_deg = sprintf(
-    "%.2f",
+  Estimated_shift_deg = round(
     c(
       unname(wilcox_wrist$estimate),
       unname(wilcox_supination$estimate)
-    )
+    ),
+    2
   ),
   CI_95 = c(
     paste0(
@@ -430,9 +525,22 @@ wilcoxon_results <- data.frame(
   )
 )
 
+# Create a formatted P value column for display
+wilcoxon_results$P_value <- format.pval(
+  wilcoxon_results$p_value_numeric,
+  digits = 3,
+  eps = 0.001
+)
+
 # Display the table
 knitr::kable(
-  wilcoxon_results,
+  wilcoxon_results[, c(
+    "Outcome",
+    "V",
+    "P_value",
+    "Estimated_shift_deg",
+    "CI_95"
+  )],
   caption = "Wilcoxon signed-rank tests for paired T0-T1 comparisons",
   col.names = c(
     "Outcome",
@@ -449,13 +557,13 @@ knitr::kable(
     position = "center"
   )
 ```
-_Interpretation of Wilcoxon signed-rank tests_:
+### Interpretation of Wilcoxon signed-rank tests
 
 The Wilcoxon signed-rank tests showed statistically significant positive changes between T0 and T1 for both movement variables.
 
-For wrist extension, the test was statistically significant, **V = 100542, P < 0.001**. The estimated location shift was **1.70 degrees**, with a 95% confidence interval from **1.60 to 1.85 degrees**. This indicates a statistically significant increase in wrist extension between T0 and T1.
+For wrist extension, the test was statistically significant, **V = `r wilcoxon_results$V[wilcoxon_results$Outcome == "Wrist extension"]`, P = `r wilcoxon_results$P_value[wilcoxon_results$Outcome == "Wrist extension"]`**. The estimated location shift was **`r wilcoxon_results$Estimated_shift_deg[wilcoxon_results$Outcome == "Wrist extension"]` degrees**, with a 95% confidence interval from **`r wilcoxon_results$CI_95[wilcoxon_results$Outcome == "Wrist extension"]` degrees**. This indicates a statistically significant increase in wrist extension between T0 and T1.
 
-For forearm supination, the test was also statistically significant, **V = 99224, P < 0.001**. The estimated location shift was **2.10 degrees**, with a 95% confidence interval from **1.90 to 2.25 degrees**. This indicates a statistically significant increase in forearm supination between T0 and T1.
+For forearm supination, the test was also statistically significant, **V = `r wilcoxon_results$V[wilcoxon_results$Outcome == "Forearm supination"]`, P = `r wilcoxon_results$P_value[wilcoxon_results$Outcome == "Forearm supination"]`**. The estimated location shift was **`r wilcoxon_results$Estimated_shift_deg[wilcoxon_results$Outcome == "Forearm supination"]` degrees**, with a 95% confidence interval from **`r wilcoxon_results$CI_95[wilcoxon_results$Outcome == "Forearm supination"]` degrees**. This indicates a statistically significant increase in forearm supination between T0 and T1.
 
 Overall, both wrist extension and forearm supination increased significantly between T0 and T1. However, because this was a pre-post analysis without a control group, these results should be interpreted as observed within-participant changes rather than as definitive causal effects of the prevention program.
 
@@ -463,7 +571,7 @@ Overall, both wrist extension and forearm supination increased significantly bet
 
 A sensitivity analysis was performed by excluding participants flagged during the anatomical plausibility check.
 
-The objective was to verify whether the main statistical conclusions were influenced by participants with high anatomical values, especially high forearm supination values.
+The objective was to verify whether the main statistical conclusions were influenced by participants with high anatomical values, including high forearm supination values.
 
 The flagged participants were excluded only for this sensitivity analysis. They were retained in the main analysis.
 
@@ -472,7 +580,7 @@ The flagged participants were excluded only for this sensitivity analysis. They 
 analysis_no_flag <- analysis_df %>%
   filter(anatomical_check_flag == FALSE)
 
-# Store the number of participants included in the sensitivity analysis
+# Store the number of participants included and excluded in the sensitivity analysis
 n_sensitivity <- nrow(analysis_no_flag)
 n_excluded <- nrow(analysis_df) - n_sensitivity
 
@@ -508,9 +616,9 @@ sensitivity_results <- data.frame(
     unname(sensitivity_wrist$statistic),
     unname(sensitivity_supination$statistic)
   ),
-  P_value = c(
-    format.pval(sensitivity_wrist$p.value, digits = 3, eps = 0.001),
-    format.pval(sensitivity_supination$p.value, digits = 3, eps = 0.001)
+  p_value_numeric = c(
+    sensitivity_wrist$p.value,
+    sensitivity_supination$p.value
   ),
   Estimated_shift_deg = round(
     c(
@@ -528,15 +636,32 @@ sensitivity_results <- data.frame(
     paste0(
       sprintf("%.2f", sensitivity_supination$conf.int[1]),
       " to ",
-  sprintf("%.2f", sensitivity_supination$conf.int[2])
+      sprintf("%.2f", sensitivity_supination$conf.int[2])
     )
   )
 )
 
+# Create a formatted P value column for display
+sensitivity_results$P_value <- format.pval(
+  sensitivity_results$p_value_numeric,
+  digits = 3,
+  eps = 0.001
+)
+
 # Display the sensitivity analysis results
 knitr::kable(
-  sensitivity_results,
-  caption = "Sensitivity analysis excluding anatomically flagged participants",
+  sensitivity_results[, c(
+    "Outcome",
+    "N",
+    "V",
+    "P_value",
+    "Estimated_shift_deg",
+    "CI_95"
+  )],
+  caption = paste0(
+    "Sensitivity analysis excluding anatomically flagged participants ",
+    "(n excluded = ", n_excluded, ")"
+  ),
   col.names = c(
     "Outcome",
     "N",
@@ -553,15 +678,15 @@ knitr::kable(
     position = "center"
   )
 ```
-_Sensitivity analysis interpretation_:
+### Sensitivity analysis interpretation
 
-The sensitivity analysis was performed **after excluding the 7 participants flagged during the anatomical plausibility check**. The sensitivity dataset included **454 participants**.
+The sensitivity analysis was performed after excluding the `r n_excluded` participants flagged during the anatomical plausibility check. The sensitivity dataset included `r n_sensitivity` participants.
 
-For wrist extension, the Wilcoxon signed-rank test remained statistically significant, **V = 97504, P < 0.001**. The estimated location shift was **1.70 degrees**, with a 95% confidence interval from **1.60 to 1.85 degrees**.
+For wrist extension, the Wilcoxon signed-rank test remained statistically significant, **V = `r sensitivity_results$V[sensitivity_results$Outcome == "Wrist extension"]`, P = `r sensitivity_results$P_value[sensitivity_results$Outcome == "Wrist extension"]`**. The estimated location shift was **`r sensitivity_results$Estimated_shift_deg[sensitivity_results$Outcome == "Wrist extension"]` degrees**, with a 95% confidence interval from **`r sensitivity_results$CI_95[sensitivity_results$Outcome == "Wrist extension"]` degrees**.
 
-For forearm supination, the Wilcoxon signed-rank test also remained statistically significant, **V = 96135, P < 0.001**. The estimated location shift was **2.05 degrees**, with a 95% confidence interval from **1.90 to 2.25 degrees**.
+For forearm supination, the Wilcoxon signed-rank test also remained statistically significant, **V = `r sensitivity_results$V[sensitivity_results$Outcome == "Forearm supination"]`, P = `r sensitivity_results$P_value[sensitivity_results$Outcome == "Forearm supination"]`**. The estimated location shift was **`r sensitivity_results$Estimated_shift_deg[sensitivity_results$Outcome == "Forearm supination"]` degrees**, with a 95% confidence interval from **`r sensitivity_results$CI_95[sensitivity_results$Outcome == "Forearm supination"]` degrees**.
 
-These results were consistent with the main analysis. Therefore, the **observed increases in wrist extension and forearm supination were not driven by the participants flagged for high anatomical values.**
+These results were consistent with the main analysis. Therefore, excluding participants flagged for high anatomical values did not materially change the statistical conclusions.
 
 ## Final results tables
 
@@ -632,6 +757,7 @@ final_results_main <- tibble::tibble(
     format_p_value(wilcox_supination$p.value)
   )
 )
+
 # Create the final results table for the sensitivity analysis
 final_results_sensitivity <- tibble::tibble(
   Outcome = c(
@@ -671,7 +797,6 @@ final_results_sensitivity <- tibble::tibble(
     format_p_value(sensitivity_supination$p.value)
   )
 )
-
 ```
 
 ### Main analysis results table
@@ -680,7 +805,7 @@ final_results_sensitivity <- tibble::tibble(
 # Display the final results table for the main analysis
 knitr::kable(
   final_results_main,
-  caption = "Main analysis results",
+  caption = "Main analysis results including all participants",
   align = "lcccccccc",
   format = "html"
 ) %>%
@@ -710,7 +835,7 @@ knitr::kable(
 # Display the final results table for the sensitivity analysis
 knitr::kable(
   final_results_sensitivity,
-  caption = "Sensitivity analysis results",
+  caption = "Sensitivity analysis results excluding anatomically flagged participants",
   align = "lcccccccc",
   format = "html"
 ) %>%
@@ -755,27 +880,99 @@ readr::write_csv(
   final_results_sensitivity,
   file.path(final_tables_dir, "sensitivity_analysis_results.csv")
 )
+
+# Create HTML versions of the final results tables
+main_results_html <- knitr::kable(
+  final_results_main,
+  caption = "Main analysis results including all participants",
+  align = "lcccccccc",
+  format = "html"
+) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  )
+
+sensitivity_results_html <- knitr::kable(
+  final_results_sensitivity,
+  caption = "Sensitivity analysis results excluding anatomically flagged participants",
+  align = "lcccccccc",
+  format = "html"
+) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  )
+
+# Export the final results tables as HTML files
+writeLines(
+  as.character(main_results_html),
+  file.path(final_tables_dir, "main_analysis_results.html")
+)
+
+writeLines(
+  as.character(sensitivity_results_html),
+  file.path(final_tables_dir, "sensitivity_analysis_results.html")
+)
 ```
-The final results tables were exported to the `results/final_tables` folder as: 
-- `main_analysis_results.csv`
-- `sensitivity_analysis_results.csv`
+The final results tables were exported to the `results/final_tables` folder as:
+
+- `main_analysis_results.csv`;
+- `main_analysis_results.html`;
+- `sensitivity_analysis_results.csv`;
+- `sensitivity_analysis_results.html`.
 
 These files contain the final statistical results for the main analysis and the sensitivity analysis.
 
+```{r extract-final-results-values, include=FALSE}
+# Extract rows from the final result tables
+main_wrist <- final_results_main[final_results_main$Outcome == "Wrist extension", ]
+main_supination <- final_results_main[final_results_main$Outcome == "Forearm supination", ]
+
+sensitivity_wrist_row <- final_results_sensitivity[final_results_sensitivity$Outcome == "Wrist extension", ]
+sensitivity_supination_row <- final_results_sensitivity[final_results_sensitivity$Outcome == "Forearm supination", ]
+
+# Main analysis values
+main_wrist_mean_t0 <- main_wrist[["Mean T0 (°)"]]
+main_wrist_mean_t1 <- main_wrist[["Mean T1 (°)"]]
+main_wrist_mean_delta <- main_wrist[["Mean delta (°)"]]
+main_wrist_median_delta <- main_wrist[["Median delta (°)"]]
+main_wrist_shift <- main_wrist[["Estimated shift (°)"]]
+main_wrist_ci <- main_wrist[["95% CI (°)"]]
+main_wrist_p <- main_wrist[["P value"]]
+
+main_supination_mean_t0 <- main_supination[["Mean T0 (°)"]]
+main_supination_mean_t1 <- main_supination[["Mean T1 (°)"]]
+main_supination_mean_delta <- main_supination[["Mean delta (°)"]]
+main_supination_median_delta <- main_supination[["Median delta (°)"]]
+main_supination_shift <- main_supination[["Estimated shift (°)"]]
+main_supination_ci <- main_supination[["95% CI (°)"]]
+main_supination_p <- main_supination[["P value"]]
+
+# Sensitivity analysis values
+sensitivity_wrist_mean_delta <- sensitivity_wrist_row[["Mean delta (°)"]]
+sensitivity_wrist_shift <- sensitivity_wrist_row[["Estimated shift (°)"]]
+sensitivity_wrist_ci <- sensitivity_wrist_row[["95% CI (°)"]]
+
+sensitivity_supination_mean_delta <- sensitivity_supination_row[["Mean delta (°)"]]
+sensitivity_supination_shift <- sensitivity_supination_row[["Estimated shift (°)"]]
+sensitivity_supination_ci <- sensitivity_supination_row[["95% CI (°)"]]
+```
 ### Final results table interpretation
 
-The main analysis included **461 participants**. Both wrist extension and forearm supination showed statistically significant positive changes between T0 and T1.
+The main analysis included **`r nrow(analysis_df)` participants**. Both wrist extension and forearm supination showed statistically significant positive changes between T0 and T1.
 
-- For wrist extension, the mean value increased from **50.21 degrees** at T0 to **51.89 degrees** at T1. The mean delta was **1.68 degrees** and the median delta was **1.70 degrees**. The Wilcoxon estimated shift was **1.70 degrees**, with a 95% confidence interval from **1.60 to 1.85 degrees**. **The result was statistically significant (P < 0.001)**;
+- For wrist extension, the mean value increased from **`r main_wrist_mean_t0` degrees** at T0 to **`r main_wrist_mean_t1` degrees** at T1. The mean delta was **`r main_wrist_mean_delta` degrees** and the median delta was **`r main_wrist_median_delta` degrees**. The Wilcoxon estimated shift was **`r main_wrist_shift` degrees**, with a 95% confidence interval from **`r main_wrist_ci` degrees**. The result was statistically significant (**P = `r main_wrist_p`**).
 
-- For forearm supination, the mean value increased from **69.70 degrees** at T0 to **71.74 degrees** at T1. The mean delta was **2.04 degrees** and the median delta was **2.10 degrees**. The Wilcoxon estimated shift was **2.10 degrees**, with a 95% confidence interval from **1.90 to 2.25 degrees**. **The result was statistically significant (P < 0.001)**.
+- For forearm supination, the mean value increased from **`r main_supination_mean_t0` degrees** at T0 to **`r main_supination_mean_t1` degrees** at T1. The mean delta was **`r main_supination_mean_delta` degrees** and the median delta was **`r main_supination_median_delta` degrees**. The Wilcoxon estimated shift was **`r main_supination_shift` degrees**, with a 95% confidence interval from **`r main_supination_ci` degrees**. The result was statistically significant (**P = `r main_supination_p`**).
 
-The sensitivity analysis excluded the **7 participants** flagged during the anatomical plausibility check and included **454 participants**. The results remained statistically significant for both outcomes.
+The sensitivity analysis excluded the **`r n_excluded` participants** flagged during the anatomical plausibility check and included **`r n_sensitivity` participants**. The results remained statistically significant for both outcomes.
 
-- For wrist extension, the mean delta was **1.69 degrees** and the Wilcoxon estimated shift was **1.70 degrees**, with a 95% confidence interval from **1.60 to 1.85 degrees**;
-- For forearm supination, the mean delta was **2.03 degrees** and the Wilcoxon estimated shift was **2.05 degrees**, with a 95% confidence interval from **1.90 to 2.25 degrees**.
+- For wrist extension, the mean delta was **`r sensitivity_wrist_mean_delta` degrees** and the Wilcoxon estimated shift was **`r sensitivity_wrist_shift` degrees**, with a 95% confidence interval from **`r sensitivity_wrist_ci` degrees**.
 
-These sensitivity results were very close to the main analysis results. Therefore, the main statistical conclusions were not driven by the anatomically flagged participants.
+- For forearm supination, the mean delta was **`r sensitivity_supination_mean_delta` degrees** and the Wilcoxon estimated shift was **`r sensitivity_supination_shift` degrees**, with a 95% confidence interval from **`r sensitivity_supination_ci` degrees**.
+
+These sensitivity results were very close to the main analysis results. Therefore, excluding participants flagged for high anatomical values did not materially change the statistical conclusions.
 
 Overall, both wrist extension and forearm supination showed **statistically significant positive changes between T0 and T1**. However, because this was a pre-post analysis without a control group, these findings should be interpreted as observed within-participant changes rather than definitive causal effects of the prevention program.
 
@@ -783,7 +980,9 @@ Overall, both wrist extension and forearm supination showed **statistically sign
 
 A final faceted boxplot figure was used to visualize the distributions of wrist extension and forearm supination at T0 and T1.
 
-This figure complements the final statistical tables by showing the distribution of individual participant values, the median, the interquartile range, and the mean value for each outcome at each timepoint.
+This figure complements the final statistical tables by showing the distribution of participant values, the median, the interquartile range, and the mean value for each outcome at each timepoint.
+
+The figure summarizes the distributions at T0 and T1. It does not show individual paired trajectories.
 
 ```{r final-figure-boxplots, fig.width=9, fig.height=5.5, fig.align="center", fig.cap="Distribution of wrist extension and forearm supination at T0 and T1."}
 # Prepare the data for the final figure
@@ -830,7 +1029,11 @@ final_boxplot <- ggplot(
   ) +
   geom_jitter(
     aes(color = Timepoint),
-    width = 0.12,
+    position = position_jitter(
+      width = 0.12,
+      height = 0,
+      seed = 123
+    ),
     alpha = 0.25,
     size = 1.1
   ) +
@@ -874,9 +1077,8 @@ final_boxplot <- ggplot(
 
 # Display the figure in the HTML report
 final_boxplot
-```
-```{r export-final-figure}
-# Define the output folder for the final figure
+
+# Define the output folder for final figures
 final_figures_dir <- "results/final_figures"
 
 # Create the folder if it does not already exist
@@ -886,7 +1088,7 @@ dir.create(
   showWarnings = FALSE
 )
 
-# Export the final boxplot figure as a PNG file
+# Export the final figure
 ggsave(
   filename = file.path(final_figures_dir, "final_boxplot_range_of_motion.png"),
   plot = final_boxplot,
@@ -897,15 +1099,15 @@ ggsave(
 ```
 The final boxplot figure was exported to the `results/final_figures` folder as `final_boxplot_range_of_motion.png`.
 
-_Final figure interpretation_:
+### Final figure interpretation
 
 The final figure shows the distributions of wrist extension and forearm supination at T0 and T1.
 
-For both outcomes, the T1 distribution is slightly shifted upward compared with T0. This visual pattern is consistent with the descriptive results and the Wilcoxon signed-rank tests, which showed statistically significant positive changes between T0 and T1.
+For both outcomes, the T1 distribution appears slightly shifted upward compared with T0. This visual pattern is consistent with the descriptive results and the Wilcoxon signed-rank tests, which showed statistically significant positive changes between T0 and T1.
 
 The individual points show variability between participants. The white diamonds represent the mean values, which were slightly higher at T1 for both wrist extension and forearm supination.
 
-The figure should be interpreted as a descriptive visual summary of the observed pre-post changes. It supports the statistical results visually, but it does not establish a causal effect of the Ostéart prevention program because the study design did not include a control group.
+The figure should be interpreted as a descriptive visual summary of the observed pre-post changes. It is visually consistent with the statistical results, but it does not establish a causal effect of the Ostéart prevention program because the study design did not include a control group.
 
 # Discussion
 
@@ -919,28 +1121,48 @@ The observed range-of-motion values were compared with reference values reported
 
 For forearm supination, the AAOS reference value is **80 degrees**, while the AMA considers **80 degrees or more** as functional. In the present dataset, mean forearm supination increased from **69.70 degrees at T0** to **71.74 degrees at T1**. These mean values also remained below the AAOS and AMA reference values. This suggests that the observed increase did not bring the group mean up to usual reference values, but it did indicate a small positive shift.
 
-These comparisons suggest that the observed mean values were anatomically plausible but lower than commonly reported reference values. However, reference values should be interpreted cautiously. Range-of-motion values can vary according to age, sex, limb dominance, measurement method, occupational exposure, pain, fatigue, and assessment conditions. In this project, the participants were leather workers, a population potentially exposed to repetitive hand and wrist movements, which may partly explain lower mean values than those reported in general reference sources.
+These comparisons suggest that the observed mean values were anatomically plausible but lower than commonly reported reference values. However, reference values should be interpreted cautiously. Range-of-motion values can vary according to age, sex, limb dominance, measurement method, occupational exposure, pain, fatigue, and assessment conditions. In this project, the participants were leather workers, a population potentially exposed to repetitive hand and wrist movements, sustained postures, and biomechanical constraints affecting the wrist, forearm, and hand. This occupational context may partly explain lower mean values than those reported in general reference sources.
 
-The sensitivity analysis excluding the **7 participants** flagged during the anatomical plausibility check produced results very close to the main analysis. This suggests that the main statistical conclusions were not driven by these high but plausible values. This also supports the decision to retain them in the main analysis while checking their influence separately.
+The sensitivity analysis excluding the **7 participants** flagged during the anatomical plausibility check produced results very close to the main analysis. This suggests that excluding participants flagged for high anatomical values did not materially change the statistical conclusions. This also supports the decision to retain them in the main analysis while checking their influence separately.
 
-Direct comparison of the observed deltas with previous intervention studies is limited. I did not identify a directly comparable study involving leather workers, a 6-month prevention program, and the same two range-of-motion outcomes. Therefore, the results should mainly be interpreted as observed within-participant changes in this dataset rather than as effects directly comparable to previous intervention trials.
+Direct comparison of the observed deltas with previous intervention studies is limited. No directly comparable study was identified during this project involving leather workers, a 6-month prevention program, and the same two range-of-motion outcomes. Therefore, the results should mainly be interpreted as observed within-participant changes in this dataset rather than as effects directly comparable to previous intervention trials.
 
 Finally, because the study used a pre-post design without a control group, the results cannot establish a causal effect of the Ostéart prevention program. They indicate modest observed improvements over time, but other explanations cannot be ruled out, such as measurement variability, natural variation, changes in work exposure, or other contextual factors during the follow-up period.
 
+# Limitations
+
+This analysis has several limitations.
+
+First, the study used a pre-post design without a control group. Therefore, the results can describe observed within-participant changes between T0 and T1, but they cannot establish a causal effect of the Ostéart prevention program.
+
+Second, the analysis was limited to participants with complete paired data for both movement outcomes. Participants with incomplete T0 or T1 movement data were excluded from the final complete-case dataset. This complete-case approach was necessary for the paired analysis, but it may have excluded some participants from the original dataset.
+
+Third, some high anatomical values were identified during data preparation. These values were not removed from the main analysis because they were not considered impossible, but they were flagged and assessed through a sensitivity analysis.
+
+Fourth, statistically significant changes do not necessarily imply clinically meaningful changes. The observed mean changes were small in magnitude and should therefore be interpreted cautiously.
+
+Fifth, this analysis focused only on wrist extension and forearm supination. It did not assess other clinical outcomes related to upper-limb musculoskeletal disorders or carpal tunnel syndrome, such as pain, symptoms, functional limitation, grip strength, or work-related disability.
+
+Finally, range-of-motion measurements may be influenced by measurement conditions, examiner variability, participant fatigue, pain, motivation, and occupational exposure during the follow-up period. These factors could not be fully controlled in this analysis.
+
 # Conclusion
 
-This project analysed an initial range-of-motion dataset collected among 473 leather workers who participated in the 6-month Ostéart prevention program. After Python data preparation, the final complete-case analysis included **461 participants.** The statistical analysis was then performed in R.
+This project analysed range-of-motion data collected between 2023 and 2025 among leather workers who participated in the 6-month Ostéart prevention program.
 
-Both wrist extension and forearm supination showed **statistically significant positive changes between T0 and T1**. These results remained consistent after excluding the 7 participants flagged during the anatomical plausibility check.
+After Python data preparation, the final complete-case analysis dataset included **461 participants**. The statistical analysis was then performed in R.
 
-Overall, the findings suggest modest observed improvements in the two range-of-motion outcomes between baseline and follow-up. However, because the study used a pre-post design without a control group, these findings should be interpreted as observed within-participant changes rather than definitive causal effects of the Ostéart prevention program.
+Both wrist extension and forearm supination showed statistically significant positive changes between T0 and T1. Wrist extension increased by a mean of **1.68 degrees**, and forearm supination increased by a mean of **2.04 degrees**. The Wilcoxon signed-rank tests confirmed statistically significant increases for both outcomes.
+
+The sensitivity analysis excluding the **7 participants** flagged during the anatomical plausibility check produced results consistent with the main analysis. Excluding these participants did not materially change the statistical conclusions.
+
+Overall, the findings suggest modest observed improvements in wrist extension and forearm supination between baseline and follow-up. However, because the study used a pre-post design without a control group, these findings should be interpreted as observed within-participant changes rather than definitive causal effects of the Ostéart prevention program.
 
 # References
 
-Norkin, CC et White, DJ (2017) Mesure du mouvement articulaire : un guide de goniométrie. 5e édition, FA Davis Company, Philadelphie.
+Norkin, C. C., & White, D. J. (2016). *Measurement of Joint Motion: A Guide to Goniometry* (5th ed.). F. A. Davis Company.
 
-TM INSTITUTE MONTPELLIER, https://www.tminstitute.fr/osteart.html, Ostéart'Pro©, Visited in 2026.
+TM Institute. (n.d.). *Ostéart Pro*. Accessed May 11, 2026. https://www.tminstitute.fr/osteart.html
 
-Keith T. Palmer, E. Clare Harris, David Coggon, Carpal tunnel syndrome and its relation to occupation: a systematic literature review, Occupational Medicine, Volume 57, Issue 1, January 2007, Pages 57–66, https://doi.org/10.1093/occmed/kql125
+Palmer, K. T., Harris, E. C., & Coggon, D. (2007). Carpal tunnel syndrome and its relation to occupation: A systematic literature review. *Occupational Medicine, 57*(1), 57–66. doi:10.1093/occmed/kql125
 
-Nicoletti S, Carino M, Di Leone, et al. G. Prevalence of upper limb work-related musculoskeletal disorders (UL-WMSDs) in workers of the upholstered furniture industry. Med Lav. 2008;99(4):271-280. doi:10.23749/mdl.v99i4.1683
+Nicoletti, S., Carino, M., Di Leone, G., et al. (2008). Prevalence of upper limb work-related musculoskeletal disorders (UL-WMSDs) in workers of the upholstered furniture industry. *La Medicina del Lavoro, 99*(4), 271–280. doi:10.23749/mdl.v99i4.1683
